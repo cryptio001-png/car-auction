@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Car, CarInsert } from '@/lib/types'
 
@@ -57,6 +58,7 @@ const Input = ({ value, onChange, type = 'text', placeholder = '', className = '
 )
 
 export default function Home() {
+  const router = useRouter()
   const [cars, setCars]           = useState<Car[]>([])
   const [filtered, setFiltered]   = useState<Car[]>([])
   const [loading, setLoading]     = useState(true)
@@ -83,6 +85,12 @@ export default function Home() {
   const [editForm, setEditForm]   = useState<CarInsert>(emptyForm())
   const [updating, setUpdating]   = useState(false)
   const [editMsg, setEditMsg]     = useState<{text: string; type: 'ok'|'err'} | null>(null)
+
+  // ── ログアウト ──
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   // ── DB読み込み ──
   const loadCars = useCallback(async () => {
@@ -243,6 +251,12 @@ export default function Home() {
             {dbStatus === 'ok' ? '● DB接続済み' : dbStatus === 'err' ? '● 接続失敗' : '● 接続中...'}
           </span>
           登録台数: <span className="text-red-400 font-bold">{cars.length}</span> 台
+          <button
+            onClick={handleLogout}
+            className="ml-2 text-[11px] px-3 py-1 rounded border border-white/20 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            ログアウト
+          </button>
         </div>
       </header>
 
