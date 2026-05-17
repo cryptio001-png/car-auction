@@ -57,6 +57,17 @@ const Input = ({ value, onChange, type = 'text', placeholder = '', className = '
   />
 )
 
+const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
+  <div className="flex flex-col gap-1 mb-3">
+    <label className="text-xs font-medium text-gray-600">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+    {children}
+  </div>
+)
+
+const SecLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-2 px-2 py-1 bg-gray-100 border-l-4 border-gray-300 rounded-r">{children}</div>
+)
+
 export default function Home() {
   const router = useRouter()
   const [cars, setCars]           = useState<Car[]>([])
@@ -222,18 +233,6 @@ export default function Home() {
   const fStr = (v: string | null) => v || ''
   const fNum = (v: number | null) => v?.toString() || ''
 
-  // ── フォームフィールド ──
-  const Field = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-1 mb-3">
-      <label className="text-xs font-medium text-gray-600">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {children}
-    </div>
-  )
-
-  const SecLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-2 px-2 py-1 bg-gray-100 border-l-4 border-gray-300 rounded-r">{children}</div>
-  )
-
   const resultLabel = (r: string | null) => r === 'sold' ? '落札' : r === 'notsold' ? '未落札' : r === 'pending' ? '待ち' : ''
   const resultColor = (r: string | null) => r === 'sold' ? 'bg-green-100 text-green-700' : r === 'notsold' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
 
@@ -253,7 +252,7 @@ export default function Home() {
           登録台数: <span className="text-red-400 font-bold">{cars.length}</span> 台
           <button
             onClick={handleLogout}
-            className="ml-2 text-[11px] px-3 py-1 rounded border border-white/20 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="ml-2 text-[11px] px-3 py-1 rounded bg-white/10 border border-white/30 text-white font-medium hover:bg-red-600 hover:border-red-600 transition-colors"
           >
             ログアウト
           </button>
