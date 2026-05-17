@@ -198,10 +198,14 @@ export default function Home() {
   const updateCar = async () => {
     if (!editCar) return
     setUpdating(true)
-    const { error } = await supabase.from('cars').update(editForm).eq('id', editCar.id)
+    const { data, error } = await supabase.from('cars').update(editForm).eq('id', editCar.id).select()
     setUpdating(false)
     if (error) {
       setEditMsg({ text: '更新失敗: ' + error.message, type: 'err' })
+      return
+    }
+    if (!data || data.length === 0) {
+      setEditMsg({ text: '更新できませんでした（権限がない可能性があります）', type: 'err' })
       return
     }
     setEditCar(null)
