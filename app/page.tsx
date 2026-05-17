@@ -2,27 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Car, CarInsert } from '@/lib/types'
-
-// ── マスタデータ ──
-const HOUSES = ['TAA Yokohama','JU Gifu','USS Tokyo','HAA Kobe','CAA Chubu','TAA Kinki','USS Osaka','LAA Okayama']
-const MODELS: Record<string, string[]> = {
-  TOYOTA: ['ALPHARD','VELLFIRE','CAMRY','COROLLA','PRIUS','LAND CRUISER','HILUX','ESTIMA','HARRIER','NOAH','VOXY','AQUA','YARIS','RAV4','C-HR'],
-  NISSAN: ['SERENA','ELGRAND','X-TRAIL','NOTE','SKYLINE','GT-R','LEAF','JUKE','MURANO'],
-  HONDA:  ['ODYSSEY','STEP WGN','CR-V','FIT','FREED','ACCORD','N-BOX','VEZEL','JADE'],
-  MAZDA:  ['CX-5','CX-8','ATENZA','DEMIO','CX-30','MAZDA3','RX-7','MX-5'],
-  MITSUBISHI: ['OUTLANDER','DELICA','PAJERO','ECLIPSE CROSS','GALANT','ASX'],
-  SUBARU: ['FORESTER','OUTBACK','LEGACY','IMPREZA','BRZ','WRX','LEVORG','XV'],
-  SUZUKI: ['WAGON R','JIMNY','SWIFT','EVERY','SOLIO','HUSTLER','SPACIA','ALTO'],
-  DAIHATSU: ['TANTO','MOVE','MIRA','HIJET','ROCKY','BOON','COPEN','WAKE'],
-  ISUZU:  ['ELF','FORWARD','GIGA','D-MAX','MU-X'],
-  LEXUS:  ['LS','LX','RX','NX','GX','IS','ES','UX','LC'],
-}
-const COLORS = ['pearl','white','black','silver','grey','blue','red','beige','gold','green','bronze']
-const TRANS  = ['IAT','AT','MT','CVT','DCT']
-const CONDS  = ['5','4.5','4','3.5','3','R','RA','A']
-const MAKERS = Object.keys(MODELS)
 
 const emptyForm = (): CarInsert => ({
   house: null, lot: null, date: null, maker: null, model: null,
@@ -97,11 +79,41 @@ export default function Home() {
   const [updating, setUpdating]   = useState(false)
   const [editMsg, setEditMsg]     = useState<{text: string; type: 'ok'|'err'} | null>(null)
 
+  // マスタデータ
+  const [houses, setHouses]     = useState<string[]>([])
+  const [makers, setMakers]     = useState<string[]>([])
+  const [modelMap, setModelMap] = useState<Record<string, string[]>>({})
+  const [colors, setColors]     = useState<string[]>([])
+  const [trans, setTrans]       = useState<string[]>([])
+  const [conds, setConds]       = useState<string[]>([])
+
   // ── ログアウト ──
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  // ── マスタ読み込み ──
+  const loadMaster = useCallback(async () => {
+    const { data } = await supabase.from('master_data').select('*').order('id')
+    if (!data) return
+    type Row = { category: string; value: string; parent: string | null }
+    const rows = data as Row[]
+    setHouses(rows.filter(d => d.category === 'house').map(d => d.value))
+    setMakers(rows.filter(d => d.category === 'maker').map(d => d.value))
+    const mm: Record<string, string[]> = {}
+    rows.filter(d => d.category === 'model').forEach(d => {
+      if (!d.parent) return
+      if (!mm[d.parent]) mm[d.parent] = []
+      mm[d.parent].push(d.value)
+    })
+    setModelMap(mm)
+    setColors(rows.filter(d => d.category === 'color').map(d => d.value))
+    setTrans(rows.filter(d => d.category === 'trans').map(d => d.value))
+    setConds(rows.filter(d => d.category === 'cond').map(d => d.value))
+  }, [])
+
+  useEffect(() => { loadMaster() }, [loadMaster])
 
   // ── DB読み込み ──
   const loadCars = useCallback(async () => {
@@ -248,6 +260,9 @@ export default function Home() {
         <div className="flex items-baseline gap-3">
           <h1 className="text-base font-bold tracking-wide">🚗 車両オークション管理</h1>
           <span className="text-xs text-white/40 font-mono">Car Auction Management System</span>
+          <Link href="/master" className="text-[11px] px-2 py-0.5 rounded bg-white/10 border border-white/20 text-white/60 hover:text-white hover:bg-white/20 transition-colors">
+            マスタ管理
+          </Link>
         </div>
         <div className="text-xs font-mono text-white/50 flex items-center gap-3">
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${dbStatus === 'ok' ? 'bg-green-900 text-green-400' : dbStatus === 'err' ? 'bg-red-900 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -273,7 +288,7 @@ export default function Home() {
           <Field label="会場" required>
             <Sel value={fStr(form.house)} onChange={v => setForm(f => ({ ...f, house: v || null }))}>
               <option value="">選択してください</option>
-              {HOUSES.map(h => <option key={h}>{h}</option>)}
+              {houses.map(h => <option key={h}>{h}</option>)}
             </Sel>
           </Field>
           <div className="grid grid-cols-2 gap-2">
@@ -290,13 +305,13 @@ export default function Home() {
             <Field label="メーカー" required>
               <Sel value={fStr(form.maker)} onChange={v => setForm(f => ({ ...f, maker: v || null, model: null }))}>
                 <option value="">選択</option>
-                {MAKERS.map(m => <option key={m}>{m}</option>)}
+                {makers.map(m => <option key={m}>{m}</option>)}
               </Sel>
             </Field>
             <Field label="モデル" required>
               <Sel value={fStr(form.model)} onChange={v => setForm(f => ({ ...f, model: v || null }))}>
                 <option value="">{form.maker ? '選択' : 'メーカー先に'}</option>
-                {(MODELS[form.maker || ''] || []).map(m => <option key={m}>{m}</option>)}
+                {(modelMap[form.maker || ''] || []).map(m => <option key={m}>{m}</option>)}
               </Sel>
             </Field>
           </div>
@@ -319,20 +334,20 @@ export default function Home() {
             <Field label="ミッション">
               <Sel value={fStr(form.trans)} onChange={v => setForm(f => ({ ...f, trans: v || null }))}>
                 <option value="">選択</option>
-                {TRANS.map(t => <option key={t}>{t}</option>)}
+                {trans.map(t => <option key={t}>{t}</option>)}
               </Sel>
             </Field>
             <Field label="コンディション">
               <Sel value={fStr(form.cond)} onChange={v => setForm(f => ({ ...f, cond: v || null }))}>
                 <option value="">選択</option>
-                {CONDS.map(c => <option key={c}>{c}</option>)}
+                {conds.map(c => <option key={c}>{c}</option>)}
               </Sel>
             </Field>
           </div>
           <Field label="色">
             <Sel value={fStr(form.color)} onChange={v => setForm(f => ({ ...f, color: v || null }))}>
               <option value="">選択</option>
-              {COLORS.map(c => <option key={c}>{c}</option>)}
+              {colors.map(c => <option key={c}>{c}</option>)}
             </Sel>
           </Field>
 
@@ -406,10 +421,10 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[
-                [sMaker, setSMaker, '全メーカー', MAKERS],
+                [sMaker, setSMaker, '全メーカー', makers],
                 [sResult, setSResult, '全結果', [['sold','落札'],['notsold','未落札'],['pending','出品待ち']]],
-                [sColor, setSColor, '全カラー', COLORS],
-                [sHouse, setSHouse, '全会場', HOUSES],
+                [sColor, setSColor, '全カラー', colors],
+                [sHouse, setSHouse, '全会場', houses],
               ].map(([val, set, placeholder, opts], i) => (
                 <select key={i} value={val as string} onChange={e => (set as (v:string)=>void)(e.target.value)}
                   className="px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
@@ -522,7 +537,7 @@ export default function Home() {
                 <Field label="会場">
                   <Sel value={fStr(editForm.house)} onChange={v => setEditForm(f => ({ ...f, house: v || null }))}>
                     <option value="">選択</option>
-                    {HOUSES.map(h => <option key={h}>{h}</option>)}
+                    {houses.map(h => <option key={h}>{h}</option>)}
                   </Sel>
                 </Field>
                 <Field label="ロット番号">
@@ -534,13 +549,13 @@ export default function Home() {
                 <Field label="メーカー">
                   <Sel value={fStr(editForm.maker)} onChange={v => setEditForm(f => ({ ...f, maker: v || null, model: null }))}>
                     <option value="">選択</option>
-                    {MAKERS.map(m => <option key={m}>{m}</option>)}
+                    {makers.map(m => <option key={m}>{m}</option>)}
                   </Sel>
                 </Field>
                 <Field label="モデル">
                   <Sel value={fStr(editForm.model)} onChange={v => setEditForm(f => ({ ...f, model: v || null }))}>
                     <option value="">選択</option>
-                    {(MODELS[editForm.maker || ''] || []).map(m => <option key={m}>{m}</option>)}
+                    {(modelMap[editForm.maker || ''] || []).map(m => <option key={m}>{m}</option>)}
                   </Sel>
                 </Field>
                 <Field label="グレード">
@@ -557,20 +572,20 @@ export default function Home() {
                 <Field label="ミッション">
                   <Sel value={fStr(editForm.trans)} onChange={v => setEditForm(f => ({ ...f, trans: v || null }))}>
                     <option value="">選択</option>
-                    {TRANS.map(t => <option key={t}>{t}</option>)}
+                    {trans.map(t => <option key={t}>{t}</option>)}
                   </Sel>
                 </Field>
                 <Field label="コンディション">
                   <Sel value={fStr(editForm.cond)} onChange={v => setEditForm(f => ({ ...f, cond: v || null }))}>
                     <option value="">選択</option>
-                    {CONDS.map(c => <option key={c}>{c}</option>)}
+                    {conds.map(c => <option key={c}>{c}</option>)}
                   </Sel>
                 </Field>
               </div>
               <Field label="色">
                 <Sel value={fStr(editForm.color)} onChange={v => setEditForm(f => ({ ...f, color: v || null }))}>
                   <option value="">選択</option>
-                  {COLORS.map(c => <option key={c}>{c}</option>)}
+                  {colors.map(c => <option key={c}>{c}</option>)}
                 </Sel>
               </Field>
               <SecLabel>価格情報</SecLabel>
