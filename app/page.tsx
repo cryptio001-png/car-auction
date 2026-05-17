@@ -87,6 +87,9 @@ export default function Home() {
   const [trans, setTrans]       = useState<string[]>([])
   const [conds, setConds]       = useState<string[]>([])
 
+  // モバイルタブ
+  const [mobileTab, setMobileTab] = useState<'list' | 'form'>('list')
+
   // ── ログアウト ──
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -253,35 +256,59 @@ export default function Home() {
   const resultColor = (r: string | null) => r === 'sold' ? 'bg-green-100 text-green-700' : r === 'notsold' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans">
+    <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
 
       {/* ── Header ── */}
-      <header className="bg-[#1a2332] text-white h-14 flex items-center justify-between px-6 border-b-4 border-red-600">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-base font-bold tracking-wide">🚗 車両オークション管理</h1>
-          <span className="text-xs text-white/40 font-mono">Car Auction Management System</span>
-          <Link href="/master" className="text-[11px] px-2 py-0.5 rounded bg-white/10 border border-white/20 text-white/60 hover:text-white hover:bg-white/20 transition-colors">
+      <header className="bg-[#1a2332] text-white h-14 flex items-center justify-between px-3 md:px-6 border-b-4 border-red-600 shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <h1 className="text-sm md:text-base font-bold tracking-wide whitespace-nowrap">🚗 車両オークション管理</h1>
+          <span className="hidden md:inline text-xs text-white/40 font-mono">Car Auction Management System</span>
+          <Link href="/master" className="hidden md:inline text-[11px] px-2 py-0.5 rounded bg-white/10 border border-white/20 text-white/60 hover:text-white hover:bg-white/20 transition-colors">
             マスタ管理
           </Link>
         </div>
-        <div className="text-xs font-mono text-white/50 flex items-center gap-3">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${dbStatus === 'ok' ? 'bg-green-900 text-green-400' : dbStatus === 'err' ? 'bg-red-900 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`hidden md:inline-block text-[10px] px-2 py-0.5 rounded-full ${dbStatus === 'ok' ? 'bg-green-900 text-green-400' : dbStatus === 'err' ? 'bg-red-900 text-red-400' : 'bg-gray-700 text-gray-400'}`}>
             {dbStatus === 'ok' ? '● DB接続済み' : dbStatus === 'err' ? '● 接続失敗' : '● 接続中...'}
           </span>
-          登録台数: <span className="text-red-400 font-bold">{cars.length}</span> 台
+          <span className="hidden md:inline text-xs font-mono text-white/50">
+            登録台数: <span className="text-red-400 font-bold">{cars.length}</span> 台
+          </span>
           <button
             onClick={handleLogout}
-            className="ml-2 text-[11px] px-3 py-1 rounded bg-white/10 border border-white/30 text-white font-medium hover:bg-red-600 hover:border-red-600 transition-colors"
+            className="text-[11px] px-3 py-1 rounded bg-white/10 border border-white/30 text-white font-medium hover:bg-red-600 hover:border-red-600 transition-colors"
           >
             ログアウト
           </button>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-56px)]">
+      {/* ── モバイルタブバー ── */}
+      <div className="md:hidden bg-white border-b border-gray-200 flex shrink-0">
+        <button
+          onClick={() => setMobileTab('list')}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${mobileTab === 'list' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500'}`}
+        >
+          一覧
+        </button>
+        <button
+          onClick={() => setMobileTab('form')}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${mobileTab === 'form' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500'}`}
+        >
+          登録
+        </button>
+        <Link
+          href="/master"
+          className="flex-1 py-2.5 text-sm font-medium text-gray-500 text-center"
+        >
+          マスタ
+        </Link>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
 
         {/* ── 左: 登録フォーム ── */}
-        <aside className="w-80 bg-white border-r border-gray-200 overflow-y-auto p-5 shrink-0">
+        <aside className={`bg-white border-r border-gray-200 overflow-y-auto p-5 shrink-0 md:block md:w-80 ${mobileTab === 'form' ? 'block w-full' : 'hidden'}`}>
           <div className="text-xs font-bold uppercase tracking-widest text-red-600 mb-4 pb-2 border-b-2 border-red-600">車両登録</div>
 
           <SecLabel>オークション情報</SecLabel>
@@ -400,7 +427,7 @@ export default function Home() {
         </aside>
 
         {/* ── 右: 検索・一覧 ── */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className={`flex-1 flex-col overflow-hidden md:flex ${mobileTab === 'list' ? 'flex' : 'hidden'}`}>
 
           {/* 検索バー */}
           <div className="bg-white border-b border-gray-200 p-4 flex flex-col gap-3">
@@ -419,7 +446,7 @@ export default function Home() {
               <button onClick={loadCars} className="border border-gray-300 hover:bg-gray-100 px-3 py-2 rounded-md text-sm text-gray-600 transition-colors" title="DBから再取得">↻ 更新</button>
               <button onClick={exportCSV} className="bg-[#1a2332] hover:bg-[#2c3e50] text-white px-3 py-2 rounded-md text-sm transition-colors">CSV</button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
                 [sMaker, setSMaker, '全メーカー', makers],
                 [sResult, setSResult, '全結果', [['sold','落札'],['notsold','未落札'],['pending','出品待ち']]],
@@ -437,7 +464,7 @@ export default function Home() {
                 </select>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 ['年式', sYearFrom, setSYearFrom, sYearTo, setSYearTo],
                 ['落札価格 (USD)', sPriceFrom, setSPriceFrom, sPriceTo, setSPriceTo],
@@ -457,7 +484,7 @@ export default function Home() {
           </div>
 
           {/* 統計バー */}
-          <div className="grid grid-cols-4 bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
+          <div className="grid grid-cols-2 md:grid-cols-4 bg-gray-50 border-b border-gray-200 divide-x divide-gray-200">
             {[
               ['検索結果', filtered.length],
               ['落札', sold.length],
@@ -482,7 +509,7 @@ export default function Home() {
                 <p>該当する車両が見つかりません</p>
               </div>
             ) : (
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full min-w-[700px] text-sm border-collapse">
                 <thead>
                   <tr className="bg-[#1a2332] text-white/80 text-xs">
                     {['ロット','日付','車両','年式','走行距離','色','開始価格','落札価格','結果',''].map(h => (
